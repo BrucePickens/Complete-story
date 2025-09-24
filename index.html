@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Story Practice</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    h1 { text-align: center; }
+    .controls, .recall, .memory-notes { margin: 20px 0; }
+    input[type="number"], select, button { margin: 5px; }
+    #flashWord {
+      border: 2px solid #333;
+      padding: 20px;
+      min-height: 60px;
+      font-size: 28px;
+      text-align: center;
+      margin: 20px auto;
+      width: 90%;
+      border-radius: 6px;
+      background: #fafafa;
+    }
+    .sequence-word { cursor: pointer; padding: 2px 4px; border-radius: 3px; margin: 0 2px; }
+    .sequence-word:hover { background: #e0e0e0; }
+    .with-note { color: darkblue; font-weight: bold; }
+    textarea { width: 100%; min-height: 90px; resize: none; padding: 6px; }
+    .mistakes { color: red; font-weight: bold; margin-top: 8px; }
+    .category-block { border: 1px solid #ccc; padding: 8px; margin: 8px 0; border-radius: 4px; background: #f9f9f9; }
+    .memory-notes h4 { margin: 5px 0; cursor:pointer; }
+    .memory-notes ul { padding-left: 20px; display:none; }
+    .memory-notes li { margin: 2px 0; }
+    .description-box { margin-top: 6px; background: #fff; border: 1px solid #ddd; padding: 6px; border-radius: 4px; display: inline-block; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <h1>Story Practice</h1>
+
+  <div class="controls">
+    <div class="row">
+      <label for="difficulty">Difficulty:</label>
+      <select id="difficulty">
+        <option value="simple">Simple</option>
+        <option value="medium">Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <label><input type="checkbox" id="showFullToggle"> Show full sentence</label>
+      <label><input type="checkbox" id="speechToggle"> Read aloud</label>
+      <label><input type="checkbox" id="showNotesToggle"> Show descriptions</label>
+    </div>
+
+    <div class="row">
+      <label for="timer">Word speed (ms):</label>
+      <input type="range" id="timer" min="300" max="4000" step="100" value="1000">
+      <span id="timerValue">1000</span> ms
+    </div>
+
+    <div class="row">
+      <button id="startBtn">Start Story</button>
+      <button id="continueBtn">Continue</button>
+      <button id="showSequence">Show Full</button>
+    </div>
+  </div>
+
+  <div id="flashWord">Press Start</div>
+
+  <div class="recall">
+    <h3>Recall</h3>
+    <textarea id="recallInput" placeholder="Type what you remember..."></textarea><br>
+    <button id="checkRecall">Check Recall</button>
+    <div id="recallResult"></div>
+    <div id="recallMistakes" class="mistakes"></div>
+  </div>
+
+  <div class="memory-notes">
+    <h3 id="memoryHeader">Memory Notes ▼</h3>
+    <div id="memoryContent" style="display:none;">
+      <div id="categories"></div>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
