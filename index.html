@@ -3,150 +3,103 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Complete Story Practice</title>
+  <title>Sentence Practice</title>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
     h1 { text-align: center; }
-
     .controls, .recall, .memory-notes, .search-section { margin: 20px 0; }
     input[type="number"], select, button { margin: 5px; }
-
     #flashWord {
-      border: 2px solid #333;
-      padding: 20px;
-      min-height: 60px;
-      font-size: 28px;
-      text-align: center;
-      margin: 20px auto;
-      width: 90%;
-      border-radius: 6px;
-      background: #fafafa;
+      border: 2px solid #333; padding: 20px; min-height: 60px;
+      font-size: 28px; text-align: center; margin: 20px auto; width: 90%;
+      border-radius: 6px; background: #fafafa;
     }
-
-    .sequence-word {
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 3px;
-      transition: background 0.2s;
-      display: inline-block;
-      margin: 0 2px;
+    .sequence-word { cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background 0.2s; }
+    .sequence-word.with-note { background: #fffae6; }
+    .description-box { margin-top: 5px; }
+    .category-block h4 { margin: 5px 0; display: inline-block; }
+    .existing-info {
+      margin-top: 6px; padding: 8px; border: 1px dashed #aaa; border-radius: 6px; background: #fbfbfb;
+      font-size: 0.95rem;
     }
-    .sequence-word:hover { background: #e0e0e0; }
-    .with-note { color: darkblue; font-weight: bold; }
-
-    textarea { width: 100%; min-height: 90px; resize: none; padding: 6px; }
-    .mistakes { color: red; font-weight: bold; margin-top: 8px; }
-
-    .category-block {
-      border: 1px solid #ccc;
-      padding: 8px;
-      margin: 8px 0;
-      border-radius: 4px;
-      background: #f9f9f9;
-    }
-    .memory-notes h4 { margin: 5px 0; }
-    .memory-notes ul { padding-left: 20px; }
-    .memory-notes li { margin: 2px 0; }
-
-    .description-box {
-      margin-top: 6px;
-      background: #fff;
-      border: 1px solid #ddd;
-      padding: 6px;
-      border-radius: 4px;
-      display: inline-block;
-    }
-
-    .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
-    .hidden { display: none; }
+    .small { font-size: 0.9rem; color: #444; }
   </style>
 </head>
 <body>
-  <h1>Complete Story Practice</h1>
+  <h1>Sentence Practice</h1>
 
   <div class="controls">
-    <div class="row">
-      <label for="numSentences">Number of sentences:</label>
-      <input type="number" id="numSentences" value="1" min="1" max="10">
-
-      <label for="difficulty">Difficulty:</label>
+    <label>Difficulty:
       <select id="difficulty">
         <option value="simple">Simple</option>
         <option value="medium">Medium</option>
         <option value="hard">Hard</option>
       </select>
-    </div>
-
-    <div class="row">
-      <label><input type="checkbox" id="showFullToggle"> Show full sentence</label>
-      <label><input type="checkbox" id="speechToggle"> Read aloud</label>
-      <label><input type="checkbox" id="pauseToggle"> Pause after each sentence</label>
-      <label><input type="checkbox" id="showNotesToggle"> Show descriptions in sentences</label>
-    </div>
-
-    <div class="row">
-      <label for="timer">Flash speed (ms):</label>
-      <input type="range" id="timer" min="300" max="4000" step="100" value="1000">
-      <span id="timerValue">1000</span> ms
-    </div>
-
-    <div class="row">
-      <button id="startBtn">Start Sequence</button>
-      <button id="nextSentence">Next Sentence</button>
-      <button id="showSequence">Show Sequence</button>
-      <button id="resetStories">Reset Stories</button>
-    </div>
+    </label>
+    <label>Timer (ms): <input type="number" id="timer" value="1000" min="100" step="100"/></label>
+    <span id="timerValue">1000</span>
+    <br>
+    <label><input type="checkbox" id="showFullToggle"> Show full sentence</label>
+    <label><input type="checkbox" id="speechToggle"> Speech</label>
+    <label><input type="checkbox" id="pauseToggle"> Pause after sentence</label>
+    <label><input type="checkbox" id="showNotesToggle"> Show notes</label>
+    <br>
+    <button id="startBtn">Start</button>
+    <button id="nextSentence">Next</button>
+    <button id="resetStories">Reset Stories</button>
   </div>
 
-  <div id="flashWord">Press Start</div>
+  <div id="flashWord"></div>
 
   <div class="recall">
-    <h3>Recall</h3>
-    <textarea id="recallInput" placeholder="Type what you remember..."></textarea><br>
+    <h3>Recall Test</h3>
+    <textarea id="recallInput" rows="4" cols="50"></textarea><br>
     <button id="checkRecall">Check Recall</button>
     <div id="recallResult"></div>
-    <div id="recallMistakes" class="mistakes"></div>
-
-    <h3>Partial Recall</h3>
-    <div class="row">
-      <label for="lastN">Last N sentences:</label>
-      <input type="number" id="lastN" value="1" min="1">
-    </div>
-    <textarea id="partialRecallInput" placeholder="Type the last N sentences..."></textarea><br>
+    <div id="recallMistakes"></div>
+    <br>
+    <label>Check last 
+      <input type="number" id="lastN" value="1" min="1" style="width:40px;"> sentences
+    </label><br>
+    <textarea id="partialRecallInput" rows="2" cols="50"></textarea><br>
     <button id="checkPartial">Check Partial</button>
-    <button id="resetPartial">Reset Partial</button>
     <div id="partialResult"></div>
-    <div id="partialMistakes" class="mistakes"></div>
+    <div id="partialMistakes"></div>
   </div>
 
   <div class="memory-notes">
-    <h3 id="memoryHeader" style="cursor:pointer;">Memory Notes ▼</h3>
-    <div id="memoryContent" class="hidden">
-      <div id="categories"></div>
-
-      <h4>Add New Entry</h4>
-      <div class="row">
-        <select id="entryCategory"></select>
-        <input type="text" id="entryWord" placeholder="Word or item">
+    <h3 id="memoryHeader">Memory Notes ▼</h3>
+    <div id="memoryContent" style="display:none;">
+      <!-- Add / Edit entry -->
+      <div>
+        <label>Category:
+          <select id="entryCategory"></select>
+        </label>
+        <input type="text" id="entryWord" placeholder="Word">
         <input type="text" id="entryDesc" placeholder="Description">
-        <button id="addEntryBtn">Add Entry</button>
+        <button id="addEntryBtn">Add</button>
+        <div id="existingInfo" class="existing-info" style="display:none"></div>
       </div>
 
-      <div class="row" style="margin-top:8px;">
-        <button id="exportNotes">Export Notes</button>
-        <input type="file" id="importNotes" style="display:none;" accept="application/json">
-        <button id="importBtn">Import Notes</button>
+      <!-- Add Category -->
+      <div class="small">
+        <label>Add category: <input type="text" id="newCategoryName" placeholder="e.g. States"></label>
+        <button id="addCategoryBtn">Add Category</button>
       </div>
+
+      <div id="categories"></div>
+      <button id="exportNotes">Export Notes</button>
+      <button id="importBtn">Import Notes</button>
+      <input type="file" id="importNotes" style="display:none">
     </div>
   </div>
 
   <div class="search-section">
     <h3>Search Notes</h3>
-    <input type="text" id="searchBox" placeholder="Search word...">
+    <input type="text" id="searchBox" placeholder="Search word">
     <div id="searchResult"></div>
   </div>
 
-  <!-- make sure this matches your actual filename -->
   <script src="main.js"></script>
 </body>
 </html>

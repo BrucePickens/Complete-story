@@ -19,7 +19,8 @@ const partialInput = document.getElementById("partialRecallInput");
 let memoryNotes = JSON.parse(localStorage.getItem("memoryNotes") || "{}");
 let completedStories = JSON.parse(localStorage.getItem("completedStories") || "[]");
 
-const DEFAULT_CATEGORIES = ["Names", "Animals", "Food", "Buildings", "Places", "Objects", "Days", "Actions"];
+// *** Only one default category, but users can add more
+const DEFAULT_CATEGORIES = ["Descriptors"];
 DEFAULT_CATEGORIES.forEach(cat => {
   if (!memoryNotes[cat]) memoryNotes[cat] = [];
 });
@@ -30,10 +31,7 @@ saveNotes();
 // ----------------------------
 fetch("stories.json")
   .then(res => res.json())
-  .then(data => {
-    sentences = data;
-    console.log("✅ Stories loaded");
-  })
+  .then(data => { sentences = data; })
   .catch(err => console.error("❌ Error loading JSON", err));
 
 // ----------------------------
@@ -94,24 +92,17 @@ function resetStories() {
 // ----------------------------
 function generateSequence() {
   const diff = document.getElementById("difficulty").value;
-
-  // filter out completed stories
   const pool = sentences[diff].filter(story => !completedStories.includes(story.title));
   if (pool.length === 0) {
     alert("⚠️ No unread stories left in this category.");
     return;
   }
-
   shuffle(pool);
   const chosen = pool[0];
-
   sequenceSets = chosen.sentences.map(s => s.split(/\s+/));
   currentIdx = 0;
-
-  // mark story as completed
   markStoryDone(chosen.title);
 
-  // reset UI
   recallInput.value = "";
   partialInput.value = "";
   document.getElementById("recallResult").textContent = "";
@@ -148,42 +139,27 @@ function playSentence() {
     flashWord.textContent = "✅ Story complete!";
     return;
   }
-
   const sentenceWords = sequenceSets[currentIdx];
   const sentenceText = sentenceWords.join(" ");
 
   if (showFullToggle.checked) {
     renderSentence(sentenceWords);
-
-    if (speechToggle.checked) {
-      speak("Next sentence. " + sentenceText);
-    }
-
-    if (pauseToggle.checked) {
-      return; // stop, wait for Next button
-    } else {
-      currentIdx++;
-      setTimeout(playSentence, wordTimer);
-    }
+    if (speechToggle.checked) speak("Next sentence. " + sentenceText);
+    if (pauseToggle.checked) return;
+    currentIdx++;
+    setTimeout(playSentence, wordTimer);
   } else {
     let wi = 0;
     const tick = () => {
       if (wi >= sentenceWords.length) {
-        if (pauseToggle.checked) {
-          return; // wait for Next
-        } else {
-          currentIdx++;
-          setTimeout(playSentence, wordTimer);
-        }
+        if (pauseToggle.checked) return;
+        currentIdx++;
+        setTimeout(playSentence, wordTimer);
         return;
       }
       renderSentence([sentenceWords[wi]]);
       if (speechToggle.checked) {
-        if (wi === 0) {
-          speak("Next sentence. " + sentenceWords[wi]);
-        } else {
-          speak(sentenceWords[wi]);
-        }
+        speak(wi === 0 ? "Next sentence. " + sentenceWords[wi] : sentenceWords[wi]);
       }
       wi++;
       setTimeout(tick, wordTimer);
@@ -203,89 +179,45 @@ document.getElementById("nextSentence").onclick = () => {
 };
 
 // ----------------------------
-// Recall Scoring
+// Recall Scoring (keywords only)
 // ----------------------------
 function normalizeToken(w) {
   return (w || "").toLowerCase().replace(/[^a-z0-9]/g, "");
 }
-function levenshtein(a, b) {
-  const dp = Array.from({ length: a.length + 1 }, () => Array(b.length + 1).fill(0));
-  for (let i = 0; i <= a.length; i++) dp[i][0] = i;
-  for (let j = 0; j <= b.length; j++) dp[0][j] = j;
-  for (let i = 1; i <= a.length; i++) {
-    for (let j = 1; j <= b.length; j++) {
-      if (a[i - 1] === b[j - 1]) dp[i][j] = dp[i - 1][j - 1];
-      else dp[i][j] = 1 + Math.min(dp[i - 1][j], dp[i][j - 1], dp[i - 1][j - 1]);
-    }
-  }
-  return dp[a.length][b.length];
+const STOP_WORDS = new Set(["the", "a", "is", "are", "and", "in", "on", "at", "to", "of"]);
+function extractKeyWords(text) {
+  return text.split(/\s+/)
+    .map(normalizeToken)
+    .filter(w => w && !STOP_WORDS.has(w));
 }
-function allowedDistance(len) {
-  if (len <= 4) return 1;
-  if (len <= 7) return 2;
-  return 3;
-}
-function compareSequences(input, reference) {
-  const inputWords = (input || "").split(/\s+/).map(normalizeToken).filter(Boolean);
-  const refWords = reference.map(normalizeToken).filter(Boolean);
-
+function compareByKeywords(input, reference) {
+  const inputKeys = new Set(extractKeyWords(input));
+  const refKeys = extractKeyWords(reference.join(" "));
   let matched = 0;
-  const mistakes = [];
-
-  const maxLen = Math.max(inputWords.length, refWords.length);
-  for (let i = 0; i < maxLen; i++) {
-    const iw = inputWords[i];
-    const rw = refWords[i];
-
-    if (!iw && rw) {
-      mistakes.push(`❌ Missing: "${rw}"`);
-      continue;
-    }
-    if (iw && !rw) {
-      mistakes.push(`❌ Extra: "${iw}"`);
-      continue;
-    }
-
-    if (iw === rw) {
-      matched++;
-    } else {
-      const dist = levenshtein(iw, rw);
-      if (dist <= allowedDistance(Math.max(iw.length, rw.length))) {
-        matched++;
-      } else {
-        mistakes.push(`❌ Expected "${rw}", got "${iw}"`);
-      }
-    }
-  }
-
-  return { matched, total: refWords.length, mistakes };
+  refKeys.forEach(rw => { if (inputKeys.has(rw)) matched++; });
+  return { matched, total: refKeys.length, refSentence: reference.join(" ") };
 }
-
 function checkRecallFull() {
   if (sequenceSets.length === 0) return;
   const reference = sequenceSets.flat();
-  const result = compareSequences(recallInput.value, reference);
-
+  const result = compareByKeywords(recallInput.value, reference);
   document.getElementById("recallResult").textContent =
-    `Matched: ${result.matched}/${result.total}`;
+    `Matched key ideas: ${result.matched}/${result.total}`;
   document.getElementById("recallMistakes").innerHTML =
-    result.mistakes.length ? result.mistakes.join("<br>") : "✅ Perfect!";
+    `<b>Correct Answer:</b><br>${result.refSentence}`;
 }
 function checkPartialRecall() {
   if (sequenceSets.length === 0) return;
   let lastN = parseInt(document.getElementById("lastN").value);
   if (Number.isNaN(lastN) || lastN < 1) lastN = 1;
   lastN = Math.min(lastN, sequenceSets.length);
-
   const subset = sequenceSets.slice(sequenceSets.length - lastN).flat();
-  const result = compareSequences(partialInput.value, subset);
-
+  const result = compareByKeywords(partialInput.value, subset);
   document.getElementById("partialResult").textContent =
-    `Matched: ${result.matched}/${result.total}`;
+    `Matched key ideas: ${result.matched}/${result.total}`;
   document.getElementById("partialMistakes").innerHTML =
-    result.mistakes.length ? result.mistakes.join("<br>") : "✅ Perfect!";
+    `<b>Correct Answer:</b><br>${result.refSentence}`;
 }
-
 document.getElementById("checkRecall").addEventListener("click", checkRecallFull);
 document.getElementById("checkPartial").addEventListener("click", checkPartialRecall);
 
@@ -305,7 +237,6 @@ memoryHeader.addEventListener("click", () => {
   memoryContent.style.display = open ? "none" : "block";
   memoryHeader.textContent = open ? "Memory Notes ▼" : "Memory Notes ▲";
 });
-
 function saveNotes() {
   localStorage.setItem("memoryNotes", JSON.stringify(memoryNotes));
 }
@@ -314,21 +245,26 @@ function renderCategories() {
   for (const cat in memoryNotes) {
     const div = document.createElement("div");
     div.className = "category-block";
-
     const header = document.createElement("h4");
     header.textContent = cat;
     header.style.cursor = "pointer";
-
     const ul = document.createElement("ul");
     ul.style.display = "none";
     header.onclick = () => { ul.style.display = ul.style.display === "none" ? "block" : "none"; };
-
     memoryNotes[cat].forEach((note, idx) => {
       const li = document.createElement("li");
       li.textContent = `${note.word} → ${note.desc || ""}`;
+      const delBtn = document.createElement("button");
+      delBtn.textContent = "❌";
+      delBtn.style.marginLeft = "8px";
+      delBtn.onclick = () => {
+        memoryNotes[cat].splice(idx, 1);
+        saveNotes();
+        renderCategories();
+      };
+      li.appendChild(delBtn);
       ul.appendChild(li);
     });
-
     div.appendChild(header);
     div.appendChild(ul);
     categoriesDiv.appendChild(div);
@@ -345,14 +281,19 @@ function refreshEntryCategoryDropdown() {
   }
 }
 addEntryBtn.addEventListener("click", () => {
-  const cat = entryCategory.value;
+  let cat = entryCategory.value;
   const word = (entryWord.value || "").trim();
   const desc = (entryDesc.value || "").trim();
-  if (!cat || !word) return;
+  if (!cat) return;
   if (!memoryNotes[cat]) memoryNotes[cat] = [];
+  if (!word) return;
   const existing = memoryNotes[cat].find(n => n.word.toLowerCase() === word.toLowerCase());
-  if (existing) existing.desc = desc;
-  else memoryNotes[cat].push({ word, desc });
+  if (existing) {
+    alert(`Word "${word}" already exists with description: ${existing.desc || "(none)"}`);
+    existing.desc = desc;
+  } else {
+    memoryNotes[cat].push({ word, desc });
+  }
   saveNotes();
   renderCategories();
   entryWord.value = "";
@@ -363,10 +304,8 @@ addEntryBtn.addEventListener("click", () => {
 function openDescriptionEditor(wordKey, span, originalWord) {
   const existing = span.parentElement.querySelector(".description-box");
   if (existing) existing.remove();
-
   const editor = document.createElement("div");
   editor.className = "description-box";
-
   const dropdown = document.createElement("select");
   for (const cat in memoryNotes) {
     const opt = document.createElement("option");
@@ -374,16 +313,13 @@ function openDescriptionEditor(wordKey, span, originalWord) {
     opt.textContent = cat;
     dropdown.appendChild(opt);
   }
-
   const input = document.createElement("input");
   input.type = "text";
   input.placeholder = "Description";
   const current = getDescription(wordKey);
   if (current) input.value = current;
-
   const saveBtn = document.createElement("button");
   saveBtn.textContent = "Save";
-
   saveBtn.onclick = () => {
     const cat = dropdown.value;
     if (!memoryNotes[cat]) memoryNotes[cat] = [];
@@ -397,7 +333,6 @@ function openDescriptionEditor(wordKey, span, originalWord) {
     if (input.value && showNotesToggle.checked) span.classList.add("with-note");
     else span.classList.remove("with-note");
   };
-
   editor.appendChild(dropdown);
   editor.appendChild(input);
   editor.appendChild(saveBtn);
